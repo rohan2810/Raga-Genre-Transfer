@@ -96,6 +96,7 @@ def convert_midi_to_pianoroll(path):
         midi_info = get_midi_info(pm)
         print(midi_info)
         multitrack = pypianoroll.from_pretty_midi(pm)
+        print(multitrack)
         # merged = get_merged(multitrack)
         # print(merged)
         path_exists(CONVERTER_PATH)
