@@ -2,7 +2,7 @@ import errno
 import os
 
 import pretty_midi
-from pypianoroll import Multitrack, Track
+import pypianoroll
 
 ROOT_PATH = 'datasets'
 CONVERTER_PATH = os.path.join(ROOT_PATH, 'bhairavi_test/converter')
@@ -70,10 +70,11 @@ def get_merged(multitrack):
     for key in category_list:
         if category_list[key]:
             merged = multitrack[category_list[key]].get_merged_pianoroll()
-            tracks.append(Track(merged, program_dict[key], key == 'Drums', key))
+            tracks.append(pypianoroll.Track(merged, program_dict[key], key == 'Drums', key))
         else:
-            tracks.append(Track(None, program_dict[key], key == 'Drums', key))
-    return Multitrack(None, tracks, multitrack.tempo, multitrack.downbeat, multitrack.beat_resolution, multitrack.name)
+            tracks.append(pypianoroll.Track(None, program_dict[key], key == 'Drums', key))
+    return pypianoroll.Multitrack(None, tracks, multitrack.tempo, multitrack.downbeat, multitrack.beat_resolution,
+                                  multitrack.name)
 
 
 def path_exists(path):
@@ -89,17 +90,18 @@ def convert_midi_to_pianoroll(path):
     try:
         midi_name = os.path.splitext(os.path.basename(path))[0]
         print(midi_name)
-        multitrack = Multitrack(resolution=24, name=midi_name)
+        multitrack = pypianoroll.Multitrack(resolution=24, name=midi_name)
         print(multitrack)
         pm = pretty_midi.PrettyMIDI(path)
         midi_info = get_midi_info(pm)
         print(midi_info)
-        multitrack.parse_pretty_midi(pm)
-        merged = get_merged(multitrack)
-        print(merged)
-
+        multitrack = pypianoroll.from_pretty_midi(pm)
+        print('multitrack')
+        print(multitrack)
+        # merged = get_merged(multitrack)
+        # print(merged)
         path_exists(CONVERTER_PATH)
-        merged.save(os.path.join(CONVERTER_PATH, midi_name + '.npz'))
+        multitrack.save(os.path.join(CONVERTER_PATH, midi_name + '.npz'))
         return [midi_name, midi_info]
 
     except:
