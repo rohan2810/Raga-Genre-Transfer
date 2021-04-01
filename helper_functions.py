@@ -108,6 +108,6 @@ def midi_filter(midi_info):
         return False
     elif midi_info['num_time_signature_change'] > 1:
         return False
-    elif midi_info['time_signature'] not in ['4/4']:
-        return False
+    # elif midi_info['time_signature'] not in ['4/4']:
+    #     return False
     return True
