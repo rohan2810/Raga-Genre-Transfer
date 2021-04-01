@@ -47,8 +47,8 @@ def get_midi_info(pm):
     return midi_info
 
 
-# check this
-def get_merged(multitrack):
+# return multitrack instance with the piano roll merged to Bass, Drums, Guitar, Piano and Strings.
+def merge_pianoroll(multitrack):
     """Return a `pypianoroll.Multitrack` instance with piano-rolls merged to
     five tracks (Bass, Drums, Guitar, Piano and Strings)"""
     category_list = {'Bass': [], 'Drums': [], 'Guitar': [], 'Piano': [], 'Strings': []}
@@ -69,7 +69,7 @@ def get_merged(multitrack):
     tracks = []
     for key in category_list:
         if category_list[key]:
-            merged = multitrack[category_list[key]].get_merged_pianoroll()  # check this
+            merged = multitrack.blend()
             tracks.append(pypianoroll.Track(key, program_dict[key], key == 'Drums', merged))
         else:
             tracks.append(pypianoroll.Track(key, program_dict[key], key == 'Drums', None))
@@ -89,17 +89,14 @@ def convert_midi_to_pianoroll(path):
     try:
         midi_name = os.path.splitext(os.path.basename(path))[0]
         print(midi_name)
-        multitrack = pypianoroll.Multitrack(midi_name, 24)
-        print(multitrack)
         pm = pretty_midi.PrettyMIDI(path)
         midi_info = get_midi_info(pm)
         print(midi_info)
         multitrack = pypianoroll.from_pretty_midi(pm)
-        print(multitrack)
-        merged = get_merged(multitrack)
+        merged = merge_pianoroll(multitrack)
         print(merged)
         path_exists(CONVERTER_PATH)
-        multitrack.save(os.path.join(CONVERTER_PATH, midi_name + '.npz'))
+        merged.save(os.path.join(CONVERTER_PATH, midi_name + '.npz'))
         return [midi_name, midi_info]
 
     except:
