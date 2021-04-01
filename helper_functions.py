@@ -1,12 +1,14 @@
 import errno
 import os
 
+import numpy as np
 import pretty_midi
 import pypianoroll
 
 ROOT_PATH = 'datasets'
 CONVERTER_PATH = os.path.join(ROOT_PATH, 'bhairavi_test/converter')
 CLEANER_PATH = os.path.join(ROOT_PATH, 'bhairavi_test/cleaner')
+LAST_BAR_MODE = 'remove'
 
 
 # helper functions
@@ -111,3 +113,13 @@ def midi_filter(midi_info):
     # elif midi_info['time_signature'] not in ['4/4']:
     #     return False
     return True
+
+
+def get_bar_piano_roll(piano_roll):
+    if int(piano_roll.shape[0] % 64) != 0:
+        if LAST_BAR_MODE == 'fill':
+            piano_roll = np.concatenate((piano_roll, np.zeros((64 - piano_roll.shape[0] % 64, 128))), axis=0)
+        elif LAST_BAR_MODE == 'remove':
+            piano_roll = np.delete(piano_roll, np.s_[-int(piano_roll.shape[0] % 64):], axis=0)
+    piano_roll = piano_roll.reshape(-1, 64, 128)
+    return piano_roll
