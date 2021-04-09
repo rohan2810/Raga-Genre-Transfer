@@ -144,19 +144,12 @@ def separate_phrases():
 
 
 def main():
-    print(CLEANER_PATH)
     divide_test_and_train()
-    print('Done divide')
     convert_clean()
-    print('Done convert clean')
     select_clean_midi()
-    print('Done select clean')
     merge_and_crop()
-    print('Done merge crop')
     concat_numpy_array()
-    print('Done concat')
     separate_phrases()
-    print('Done ALL')
 
 
 if __name__ == '__main__':

@@ -6,8 +6,10 @@ import pretty_midi
 import pypianoroll
 
 ROOT_PATH = 'datasets'
-CONVERTER_PATH = os.path.join(ROOT_PATH, 'bhairavi_test/converter')
-CLEANER_PATH = os.path.join(ROOT_PATH, 'bhairavi_test/cleaner')
+MUSIC_STYLE = "bhairavi"
+TEST_PATH = 'MIDI/' + MUSIC_STYLE + '/' + MUSIC_STYLE + '_test/'
+CONVERTER_PATH = os.path.join(ROOT_PATH, TEST_PATH + 'converter')
+CLEANER_PATH = os.path.join(ROOT_PATH, TEST_PATH + 'cleaner')
 LAST_BAR_MODE = 'remove'
 
 
@@ -106,9 +108,9 @@ def convert_midi_to_pianoroll(path):
 
 
 def midi_filter(midi_info):
-    if midi_info['first_beat_time'] > 0.0:
-        return False
-    elif midi_info['num_time_signature_change'] > 1:
+    # if midi_info['first_beat_time'] > 0.0:
+    #     return False
+    if midi_info['num_time_signature_change'] > 1:
         return False
     # elif midi_info['time_signature'] not in ['4/4']:
     #     return False
