@@ -4,8 +4,7 @@ import tensorflow as tf
 from tensorflow.python.lib.io import file_io
 
 from model import cyclegan
-
-# from style_classifier import Classifer
+from style_classifier import Classifer
 
 tf.set_random_seed(19)
 
@@ -71,9 +70,9 @@ def main(_):
             model = cyclegan(sess, args)
             model.train(args) if args.phase == 'train' else model.test(args)
 
-        # if args.type == 'classifier':
-        #     classifier = Classifer(sess, args)
-        #     classifier.train(args) if args.phase == 'train' else classifier.test(args)
+        if args.type == 'classifier':
+            classifier = Classifer(sess, args)
+            classifier.train(args) if args.phase == 'train' else classifier.test(args)
 
 
 if __name__ == '__main__':
