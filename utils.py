@@ -1,3 +1,8 @@
+"""
+Some codes from https://github.com/Newmu/dcgan_code
+"""
+from __future__ import division
+
 import copy
 import math
 
