@@ -25,6 +25,7 @@ class Classifier(object):
         self.sigma_d = args.sigma_d
         self.model = args.model
         self.test_dir = args.test_dir
+        self.log_dir = args.log_dir
 
         self.generator = generator_resnet
         self.discriminator = discriminator_classifier
