@@ -210,6 +210,8 @@ class Classifier(object):
                                                                                   self.sigma_d,
                                                                                   self.now_datetime,
                                                                                   args.which_direction)))
+        print('sample_files_origin')
+        print(sample_files_origin)
         sample_files_origin.sort(key=lambda x: int(os.path.splitext(os.path.basename(x))[0].split('_')[0]))
 
         # load the origin samples in npy format and sorted in ascending order
