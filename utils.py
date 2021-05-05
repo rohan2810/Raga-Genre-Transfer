@@ -4,17 +4,18 @@ Some codes from https://github.com/Newmu/dcgan_code
 from __future__ import division
 
 import copy
-import math
-
 import datetime
-import numpy as np
+import math
 import pprint
+
+import numpy as np
 import pretty_midi as pm
 import scipy.misc
+# from dataprocessing import select_instrument, piano_roll_to_pretty_midi
+import tensorflow as tf
 
 import write_midi
 
-# from dataprocessing import select_instrument, piano_roll_to_pretty_midi
 try:
     _imread = scipy.misc.imread
 except AttributeError:
@@ -205,7 +206,7 @@ def get_rand_samples(x, sample_size=64):
 
 
 def get_now_datetime():
-    now = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M')
+    now = datetime.datetime.now().strftime('%Y-%m-%d')
     return str(now)
 
 
