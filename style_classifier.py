@@ -204,16 +204,16 @@ class Classifier(object):
         sample_files_origin = glob(
             os.path.join(self.test_dir, '{}2{}_{}_{}_{}/{}/npy/origin/*.*'.format(self.dataset_A_dir,
                                                                                   self.dataset_B_dir,
-                                                                                  self.now_datetime,
                                                                                   self.model,
                                                                                   self.sigma_d,
+                                                                                  self.now_datetime,
                                                                                   args.which_direction)))
         print('sample_files_origin')
         print('{}2{}_{}_{}_{}/{}/npy/origin/*.*'.format(self.dataset_A_dir,
                                                         self.dataset_B_dir,
-                                                        self.now_datetime,
                                                         self.model,
                                                         self.sigma_d,
+                                                        self.now_datetime,
                                                         args.which_direction))
         sample_files_origin.sort(key=lambda x: int(os.path.splitext(os.path.basename(x))[0].split('_')[0]))
 
@@ -221,16 +221,16 @@ class Classifier(object):
         sample_files_transfer = glob(
             os.path.join(self.test_dir, '{}2{}_{}_{}_{}/{}/npy/transfer/*.*'.format(self.dataset_A_dir,
                                                                                     self.dataset_B_dir,
-                                                                                    self.now_datetime,
                                                                                     self.model,
                                                                                     self.sigma_d,
+                                                                                    self.now_datetime,
                                                                                     args.which_direction)))
         print('sample_files_transfer')
         print('{}2{}_{}_{}_{}/{}/npy/transfer/*.*'.format(self.dataset_A_dir,
                                                           self.dataset_B_dir,
-                                                          self.now_datetime,
                                                           self.model,
                                                           self.sigma_d,
+                                                          self.now_datetime,
                                                           args.which_direction))
         sample_files_transfer.sort(key=lambda x: int(os.path.splitext(os.path.basename(x))[0].split('_')[0]))
 
@@ -238,16 +238,16 @@ class Classifier(object):
         sample_files_cycle = glob(
             os.path.join(self.test_dir, 'test/{}2{}_{}_{}_{}/{}/npy/cycle/*.*'.format(self.dataset_A_dir,
                                                                                       self.dataset_B_dir,
-                                                                                      self.now_datetime,
                                                                                       self.model,
                                                                                       self.sigma_d,
+                                                                                      self.now_datetime,
                                                                                       args.which_direction)))
         print('sample_files_cycle')
         print('{}2{}_{}_{}_{}/{}/npy/cycle/*.*'.format(self.dataset_A_dir,
                                                        self.dataset_B_dir,
-                                                       self.now_datetime,
                                                        self.model,
                                                        self.sigma_d,
+                                                       self.now_datetime,
                                                        args.which_direction))
         sample_files_cycle.sort(key=lambda x: int(os.path.splitext(os.path.basename(x))[0].split('_')[0]))
 
