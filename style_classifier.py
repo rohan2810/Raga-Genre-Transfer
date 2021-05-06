@@ -249,13 +249,15 @@ class Classifier(object):
                                                        self.sigma_d,
                                                        self.now_datetime,
                                                        args.which_direction))
+        print('sample_files_cycle length before sort {}'.format(len(sample_files_cycle)))
         sample_files_cycle.sort(key=lambda x: int(os.path.splitext(os.path.basename(x))[0].split('_')[0]))
 
         # put the origin, transfer and cycle of the same phrase in one zip
         print('sample_files_origin length {}'.format(len(sample_files_origin)))
         print('sample_files_cycle length {}'.format(len(sample_files_cycle)))
         print('sample_files_transfer length {}'.format(len(sample_files_transfer)))
-        sample_files = list(zip(sample_files_origin, sample_files_transfer, 1096))
+        l = [None] * 1096
+        sample_files = list(zip(sample_files_origin, sample_files_transfer, l))
         print('sample_files length {}'.format(len(sample_files)))
 
         if self.load(args.checkpoint_dir):
