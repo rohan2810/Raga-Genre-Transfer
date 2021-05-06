@@ -253,9 +253,9 @@ class Classifier(object):
 
         # put the origin, transfer and cycle of the same phrase in one zip
         print('sample_files_origin length {}'.format(len(sample_files_origin)))
-        print('sample_files_transfer length {}'.format(len(sample_files_cycle)))
+        print('sample_files_cycle length {}'.format(len(sample_files_cycle)))
         print('sample_files_transfer length {}'.format(len(sample_files_transfer)))
-        sample_files = list(zip(sample_files_origin, sample_files_transfer, sample_files_cycle))
+        sample_files = list(zip(sample_files_origin, sample_files_transfer, 1096))
         print('sample_files length {}'.format(len(sample_files)))
 
         if self.load(args.checkpoint_dir):
