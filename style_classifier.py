@@ -236,7 +236,7 @@ class Classifier(object):
 
         # load the origin samples in npy format and sorted in ascending order
         sample_files_cycle = glob(
-            os.path.join(self.test_dir, 'test/{}2{}_{}_{}_{}/{}/npy/cycle/*.*'.format(self.dataset_A_dir,
+            os.path.join(self.test_dir, '{}2{}_{}_{}_{}/{}/npy/cycle/*.*'.format(self.dataset_A_dir,
                                                                                       self.dataset_B_dir,
                                                                                       self.model,
                                                                                       self.sigma_d,
@@ -256,8 +256,7 @@ class Classifier(object):
         print('sample_files_origin length {}'.format(len(sample_files_origin)))
         print('sample_files_cycle length {}'.format(len(sample_files_cycle)))
         print('sample_files_transfer length {}'.format(len(sample_files_transfer)))
-        l = [None] * 1096
-        sample_files = list(zip(sample_files_origin, sample_files_transfer, l))
+        sample_files = list(zip(sample_files_origin, sample_files_transfer, sample_files_origin))
         print('sample_files length {}'.format(len(sample_files)))
 
         if self.load(args.checkpoint_dir):
