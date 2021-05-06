@@ -252,7 +252,11 @@ class Classifier(object):
         sample_files_cycle.sort(key=lambda x: int(os.path.splitext(os.path.basename(x))[0].split('_')[0]))
 
         # put the origin, transfer and cycle of the same phrase in one zip
+        print('sample_files_origin length {}'.format(len(sample_files_origin)))
+        print('sample_files_transfer length {}'.format(len(sample_files_cycle)))
+        print('sample_files_transfer length {}'.format(len(sample_files_transfer)))
         sample_files = list(zip(sample_files_origin, sample_files_transfer, sample_files_cycle))
+        print('sample_files length {}'.format(len(sample_files)))
 
         if self.load(args.checkpoint_dir):
             print(" [*] Load SUCCESS")
