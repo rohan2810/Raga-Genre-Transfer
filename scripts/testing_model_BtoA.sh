@@ -18,4 +18,4 @@ python3 -u main.py --dataset_dir='/home/013829790/Dataset2' \
   --which_direction="BtoA"
 
 echo "Done."
-# command : bash testing_model_BtoA.sh 0 > model_testBtoA.out 2> model_testBtoA.err
+# command : bash testing_model_BtoA.sh 0 > testing_model_BtoA.out 2> testing_model_BtoA.err
