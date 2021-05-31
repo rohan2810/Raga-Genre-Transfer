@@ -14,8 +14,8 @@ python3 -u main.py --dataset_dir='/home/013829790/Dataset2' \
   --sample_dir='/home/013829790/output/samples' \
   --test_dir='/home/013829790/output/test' \
   --log_dir='/home/013829790/output/log' \
-  --type='cyclegan' --model='base' --sigma_d=0 --phase='train' \
-  --epoch=25 --epoch_step=50 --lr=0.0002
+  --type='cyclegan' --model='base' --sigma_d=0 --phase='test' \
+  --which_direction="AtoB"
 
 echo "Done."
-# command : bash model_train.sh 0 > model_train.out 2> model_train.err
+# command : bash testing_model_AtoB.sh 0 > model_testAtoB.out 2> model_testAtoB.err
