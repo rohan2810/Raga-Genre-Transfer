@@ -7,7 +7,8 @@ from model import CycleGAN
 from style_classifier import Classifier
 
 tf.compat.v1.set_random_seed(19)
-os.environ["CUDA_VISIBLE_DEVICES"] = os.environ['SGE_GPU']
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 parser = argparse.ArgumentParser(description='')
 parser.add_argument('--dataset_dir', dest='dataset_dir', default='/Datasets', help='path of the dataset')
