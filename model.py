@@ -3,18 +3,19 @@ from __future__ import division
 import os
 import time
 from collections import namedtuple
-
-from tensorflow.python.lib.io import file_io
+from glob import glob
 
 from module import *
+from module import abs_criterion, mae_criterion
 from ops import *
 from utils import *
+from utils import get_now_datetime, ImagePool, to_binary, load_npy_data, save_midis
+
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 
-# os.environ["CUDA_VISIBLE_DEVICES"] = os.environ['SGE_GPU']  # dont uncomment this
-
-
-class cyclegan(object):
+class CycleGAN(object):
     def __init__(self, sess, args):
         self.sess = sess
         self.batch_size = args.batch_size
@@ -23,6 +24,7 @@ class cyclegan(object):
         self.pitch_range = args.pitch_range
         self.input_c_dim = args.input_nc  # number of input image channels
         self.output_c_dim = args.output_nc  # number of output image channels
+        self.lr = args.lr
         self.L1_lambda = args.L1_lambda
         self.gamma = args.gamma
         self.sigma_d = args.sigma_d
@@ -30,6 +32,7 @@ class cyclegan(object):
         self.dataset_A_dir = args.dataset_A_dir
         self.dataset_B_dir = args.dataset_B_dir
         self.sample_dir = args.sample_dir
+        self.log_dir = args.log_dir
 
         self.model = args.model
         self.discriminator = discriminator
@@ -50,24 +53,25 @@ class cyclegan(object):
                                       args.phase == 'train'))
 
         self._build_model()
-        self.saver = tf.train.Saver(max_to_keep=30)
+        self.saver = tf.compat.v1.train.Saver(max_to_keep=30)
         self.now_datetime = get_now_datetime()
         self.pool = ImagePool(args.max_size)
 
     def _build_model(self):
 
         # define some placeholders
-        self.real_data = tf.placeholder(tf.float32, [self.batch_size, self.time_step, self.pitch_range,
-                                                     self.input_c_dim + self.output_c_dim], name='real_A_and_B')
+        self.real_data = tf.compat.v1.placeholder(tf.float32, [self.batch_size, self.time_step, self.pitch_range,
+                                                               self.input_c_dim + self.output_c_dim],
+                                                  name='real_A_and_B')
         if self.model != 'base':
-            self.real_mixed = tf.placeholder(tf.float32, [self.batch_size, self.time_step, self.pitch_range,
-                                                          self.input_c_dim], name='real_A_and_B_mixed')
+            self.real_mixed = tf.compat.v1.placeholder(tf.float32, [self.batch_size, self.time_step, self.pitch_range,
+                                                                    self.input_c_dim], name='real_A_and_B_mixed')
 
         self.real_A = self.real_data[:, :, :, :self.input_c_dim]
         self.real_B = self.real_data[:, :, :, self.input_c_dim:self.input_c_dim + self.output_c_dim]
 
-        self.gaussian_noise = tf.placeholder(tf.float32, [self.batch_size, self.time_step, self.pitch_range,
-                                                          self.input_c_dim], name='gaussian_noise')
+        self.gaussian_noise = tf.compat.v1.placeholder(tf.float32, [self.batch_size, self.time_step, self.pitch_range,
+                                                                    self.input_c_dim], name='gaussian_noise')
         # Generator: A - B - A
         self.fake_B = self.generator(self.real_A, self.options, False, name="generatorA2B")
         self.fake_A_ = self.generator(self.fake_B, self.options, False, name="generatorB2A")
@@ -93,10 +97,10 @@ class cyclegan(object):
         self.DB_real = self.discriminator(self.real_B + self.gaussian_noise, self.options, reuse=True,
                                           name="discriminatorB")
 
-        self.fake_A_sample = tf.placeholder(tf.float32, [self.batch_size, self.time_step, self.pitch_range,
-                                                         self.input_c_dim], name='fake_A_sample')
-        self.fake_B_sample = tf.placeholder(tf.float32, [self.batch_size, self.time_step, self.pitch_range,
-                                                         self.input_c_dim], name='fake_B_sample')
+        self.fake_A_sample = tf.compat.v1.placeholder(tf.float32, [self.batch_size, self.time_step, self.pitch_range,
+                                                                   self.input_c_dim], name='fake_A_sample')
+        self.fake_B_sample = tf.compat.v1.placeholder(tf.float32, [self.batch_size, self.time_step, self.pitch_range,
+                                                                   self.input_c_dim], name='fake_B_sample')
         self.DA_fake_sample = self.discriminator(self.fake_A_sample + self.gaussian_noise,
                                                  self.options, reuse=True, name="discriminatorA")
         self.DB_fake_sample = self.discriminator(self.fake_B_sample + self.gaussian_noise,
@@ -137,34 +141,35 @@ class cyclegan(object):
             self.D_loss = self.d_loss + self.gamma * self.d_all_loss
 
         # Define all summaries
-        self.g_loss_a2b_sum = tf.summary.scalar("g_loss_a2b", self.g_loss_a2b)
-        self.g_loss_b2a_sum = tf.summary.scalar("g_loss_b2a", self.g_loss_b2a)
-        self.g_loss_sum = tf.summary.scalar("g_loss", self.g_loss)
-        self.cycle_loss_sum = tf.summary.scalar("cycle_loss", self.cycle_loss)
-        self.g_sum = tf.summary.merge([self.g_loss_a2b_sum, self.g_loss_b2a_sum, self.g_loss_sum, self.cycle_loss_sum])
-        self.db_loss_sum = tf.summary.scalar("db_loss", self.db_loss)
-        self.da_loss_sum = tf.summary.scalar("da_loss", self.da_loss)
-        self.d_loss_sum = tf.summary.scalar("d_loss", self.d_loss)
-        self.db_loss_real_sum = tf.summary.scalar("db_loss_real", self.db_loss_real)
-        self.db_loss_fake_sum = tf.summary.scalar("db_loss_fake", self.db_loss_fake)
-        self.da_loss_real_sum = tf.summary.scalar("da_loss_real", self.da_loss_real)
-        self.da_loss_fake_sum = tf.summary.scalar("da_loss_fake", self.da_loss_fake)
+        self.g_loss_a2b_sum = tf.compat.v1.summary.scalar("g_loss_a2b", self.g_loss_a2b)
+        self.g_loss_b2a_sum = tf.compat.v1.summary.scalar("g_loss_b2a", self.g_loss_b2a)
+        self.g_loss_sum = tf.compat.v1.summary.scalar("g_loss", self.g_loss)
+        self.cycle_loss_sum = tf.compat.v1.summary.scalar("cycle_loss", self.cycle_loss)
+        self.g_sum = tf.compat.v1.summary.merge(
+            [self.g_loss_a2b_sum, self.g_loss_b2a_sum, self.g_loss_sum, self.cycle_loss_sum])
+        self.db_loss_sum = tf.compat.v1.summary.scalar("db_loss", self.db_loss)
+        self.da_loss_sum = tf.compat.v1.summary.scalar("da_loss", self.da_loss)
+        self.d_loss_sum = tf.compat.v1.summary.scalar("d_loss", self.d_loss)
+        self.db_loss_real_sum = tf.compat.v1.summary.scalar("db_loss_real", self.db_loss_real)
+        self.db_loss_fake_sum = tf.compat.v1.summary.scalar("db_loss_fake", self.db_loss_fake)
+        self.da_loss_real_sum = tf.compat.v1.summary.scalar("da_loss_real", self.da_loss_real)
+        self.da_loss_fake_sum = tf.compat.v1.summary.scalar("da_loss_fake", self.da_loss_fake)
         if self.model != 'base':
-            self.d_all_loss_sum = tf.summary.scalar("d_all_loss", self.d_all_loss)
-            self.D_loss_sum = tf.summary.scalar("D_loss", self.d_loss)
-            self.d_sum = tf.summary.merge([self.da_loss_sum, self.da_loss_real_sum, self.da_loss_fake_sum,
-                                           self.db_loss_sum, self.db_loss_real_sum, self.db_loss_fake_sum,
-                                           self.d_loss_sum, self.d_all_loss_sum, self.D_loss_sum])
+            self.d_all_loss_sum = tf.compat.v1.summary.scalar("d_all_loss", self.d_all_loss)
+            self.D_loss_sum = tf.compat.v1.summary.scalar("D_loss", self.d_loss)
+            self.d_sum = tf.compat.v1.summary.merge([self.da_loss_sum, self.da_loss_real_sum, self.da_loss_fake_sum,
+                                                     self.db_loss_sum, self.db_loss_real_sum, self.db_loss_fake_sum,
+                                                     self.d_loss_sum, self.d_all_loss_sum, self.D_loss_sum])
         else:
-            self.d_sum = tf.summary.merge([self.da_loss_sum, self.da_loss_real_sum, self.da_loss_fake_sum,
-                                           self.db_loss_sum, self.db_loss_real_sum, self.db_loss_fake_sum,
-                                           self.d_loss_sum])
+            self.d_sum = tf.compat.v1.summary.merge([self.da_loss_sum, self.da_loss_real_sum, self.da_loss_fake_sum,
+                                                     self.db_loss_sum, self.db_loss_real_sum, self.db_loss_fake_sum,
+                                                     self.d_loss_sum])
 
         # Test
-        self.test_A = tf.placeholder(tf.float32, [None, self.time_step, self.pitch_range,
-                                                  self.input_c_dim], name='test_A')
-        self.test_B = tf.placeholder(tf.float32, [None, self.time_step, self.pitch_range,
-                                                  self.output_c_dim], name='test_B')
+        self.test_A = tf.compat.v1.placeholder(tf.float32, [None, self.time_step, self.pitch_range,
+                                                            self.input_c_dim], name='test_A')
+        self.test_B = tf.compat.v1.placeholder(tf.float32, [None, self.time_step, self.pitch_range,
+                                                            self.output_c_dim], name='test_B')
         # A - B - A
         self.testB = self.generator(self.test_A, self.options, True, name="generatorA2B")
         self.testA_ = self.generator(self.testB, self.options, True, name='generatorB2A')
@@ -179,7 +184,7 @@ class cyclegan(object):
         self.testA__binary = to_binary(self.testA_, 0.5)
         self.testB__binary = to_binary(self.testB_, 0.5)
 
-        t_vars = tf.trainable_variables()
+        t_vars = tf.compat.v1.trainable_variables()
         self.d_vars = [var for var in t_vars if 'discriminator' in var.name]
         self.g_vars = [var for var in t_vars if 'generator' in var.name]
         for var in t_vars:
@@ -188,32 +193,39 @@ class cyclegan(object):
     def train(self, args):
 
         # Learning rate
-        self.lr = tf.placeholder(tf.float32, None, name='learning_rate')
+        self.lr = tf.compat.v1.placeholder(tf.float32, None, name='learning_rate')
 
         # Discriminator and Generator Optimizer
         if self.model == 'base':
-            self.d_optim = tf.train.AdamOptimizer(self.lr, beta1=args.beta1).minimize(self.d_loss, var_list=self.d_vars)
+            self.d_optim = tf.compat.v1.train.AdamOptimizer(self.lr, beta1=args.beta1).minimize(self.d_loss,
+                                                                                                var_list=self.d_vars)
         else:
-            self.d_optim = tf.train.AdamOptimizer(self.lr, beta1=args.beta1).minimize(self.D_loss, var_list=self.d_vars)
-        self.g_optim = tf.train.AdamOptimizer(self.lr, beta1=args.beta1).minimize(self.g_loss, var_list=self.g_vars)
+            self.d_optim = tf.compat.v1.train.AdamOptimizer(self.lr, beta1=args.beta1).minimize(self.D_loss,
+                                                                                                var_list=self.d_vars)
+        self.g_optim = tf.compat.v1.train.AdamOptimizer(self.lr, beta1=args.beta1).minimize(self.g_loss,
+                                                                                            var_list=self.g_vars)
 
-        init_op = tf.global_variables_initializer()
+        init_op = tf.compat.v1.global_variables_initializer()
         self.sess.run(init_op)
 
         # define the path which stores the log file, format is "{A}2{B}_{date}_{model}_{sigma}".
-        log_dir = './logs/{}2{}_{}_{}_{}'.format(self.dataset_A_dir, self.dataset_B_dir, self.now_datetime,
-                                                 self.model, self.sigma_d)
+        log_dir = os.path.join(self.log_dir,
+                               '{}2{}_{}_{}_{}'.format(self.dataset_A_dir,
+                                                       self.dataset_B_dir,
+                                                       self.model,
+                                                       self.sigma_d,
+                                                       self.now_datetime))
         # log_dir = './logs/{}2{}_{}_{}_{}'.format(self.dataset_A_dir, self.dataset_B_dir, '2018-06-10',
         #                                          self.model, self.sigma_d)
-        self.writer = tf.summary.FileWriter(log_dir, self.sess.graph)
+        self.writer = tf.compat.v1.summary.FileWriter(log_dir, self.sess.graph)
 
         # Data from domain A and B, and mixed dataset for partial and full models.
-        dataA = file_io.get_matching_files('{}/*.*'.format(self.dataset_A_dir))
-        dataB = file_io.get_matching_files('{}/*.*'.format(self.dataset_B_dir))
+        dataA = glob(os.path.join(self.dataset_dir, '{}/train/*.*'.format(self.dataset_A_dir)))
+        dataB = glob(os.path.join(self.dataset_dir, '{}/train/*.*'.format(self.dataset_B_dir)))
         if self.model == 'partial':
             data_mixed = dataA + dataB
         if self.model == 'full':
-            data_mixed = file_io.get_matching_files('./datasets/JCP_mixed/*.*')
+            data_mixed = glob('./datasets/JCP_mixed/*.*')
 
         counter = 1
         start_time = time.time()
@@ -307,44 +319,49 @@ class cyclegan(object):
                             (g_loss_a2b, g_loss_b2a, cycle_loss, da_loss, db_loss, da_all_loss, db_all_loss)))
 
                 counter += 1
-                """check this
+
                 if np.mod(counter, args.print_freq) == 1:
                     sample_dir = os.path.join(self.sample_dir, '{}2{}_{}_{}_{}'.format(self.dataset_A_dir,
                                                                                        self.dataset_B_dir,
-                                                                                       self.now_datetime,
                                                                                        self.model,
-                                                                                       self.sigma_d))
+                                                                                       self.sigma_d,
+                                                                                       self.now_datetime))
                     # sample_dir = os.path.join(self.sample_dir, '{}2{}_{}_{}_{}'.format(self.dataset_A_dir,
                     #                                                                    self.dataset_B_dir,
                     #                                                                    '2018-06-10',
                     #                                                                    self.model,
                     #                                                                    self.sigma_d))
-                    if not file_io.file_exists(sample_dir):
-                        file_io.create_dir(sample_dir)
+                    if not os.path.exists(sample_dir):
+                        os.makedirs(sample_dir)
                     self.sample_model(sample_dir, epoch, idx)
-                """
 
-            if np.mod(counter, batch_idxs) == 1:
-                self.save(args.checkpoint_dir, counter)
+                if np.mod(counter, batch_idxs) == 1:
+                    self.save(args.checkpoint_dir, counter)
 
     def save(self, checkpoint_dir, step):
         model_name = "cyclegan.model"
-        model_dir = "{}2{}_{}_{}_{}".format(self.dataset_A_dir, self.dataset_B_dir, self.now_datetime, self.model,
-                                            self.sigma_d)
+        model_dir = "{}2{}_{}_{}_{}".format(self.dataset_A_dir,
+                                            self.dataset_B_dir,
+                                            self.model,
+                                            self.sigma_d,
+                                            self.now_datetime)
         # model_dir = "{}2{}_{}_{}_{}".format(self.dataset_A_dir, self.dataset_B_dir, '2018-06-14', self.model,
         #                                     self.sigma_d)
         checkpoint_dir = os.path.join(checkpoint_dir, model_dir)
 
-        if not file_io.file_exists(checkpoint_dir):
-            file_io.create_dir(checkpoint_dir)
+        if not os.path.exists(checkpoint_dir):
+            os.makedirs(checkpoint_dir)
 
         self.saver.save(self.sess, os.path.join(checkpoint_dir, model_name), global_step=step)
 
     def load(self, checkpoint_dir):
         print(" [*] Reading checkpoint...")
 
-        model_dir = "{}2{}_{}_{}_{}".format(self.dataset_A_dir, self.dataset_B_dir, self.now_datetime, self.model,
-                                            self.sigma_d)
+        model_dir = "{}2{}_{}_{}_{}".format(self.dataset_A_dir,
+                                            self.dataset_B_dir,
+                                            self.model,
+                                            self.sigma_d,
+                                            self.now_datetime)
         # model_dir = "{}2{}_{}_{}_{}".format(self.dataset_A_dir, self.dataset_B_dir, '2018-06-14', self.model,
         #                                     self.sigma_d)
         checkpoint_dir = os.path.join(checkpoint_dir, model_dir)
@@ -363,8 +380,8 @@ class cyclegan(object):
         print('Processing sample......')
 
         # Testing data from 2 domains A and B and sorted in ascending order
-        dataA = file_io.get_matching_files('{}/*.*'.format(self.dataset_A_dir))
-        dataB = file_io.get_matching_files('{}/*.*'.format(self.dataset_B_dir))
+        dataA = glob(os.path.join(self.dataset_dir, '{}/train/*.*'.format(self.dataset_A_dir)))
+        dataB = glob(os.path.join(self.dataset_dir, '{}/train/*.*'.format(self.dataset_B_dir)))
         dataA.sort(key=lambda x: int(os.path.splitext(os.path.basename(x))[0].split('_')[-1]))
         dataB.sort(key=lambda x: int(os.path.splitext(os.path.basename(x))[0].split('_')[-1]))
 
@@ -379,25 +396,25 @@ class cyclegan(object):
                                                                        self.fake_B__binary],
                                                                       feed_dict={self.real_data: sample_images})
 
-        if not file_io.file_exists(os.path.join(sample_dir, 'B2A')):
-            file_io.create_dir(os.path.join(sample_dir, 'B2A'))
-        if not file_io.file_exists(os.path.join(sample_dir, 'A2B')):
-            file_io.create_dir(os.path.join(sample_dir, 'A2B'))
+        if not os.path.exists(os.path.join(sample_dir, 'B2A')):
+            os.makedirs(os.path.join(sample_dir, 'B2A'))
+        if not os.path.exists(os.path.join(sample_dir, 'A2B')):
+            os.makedirs(os.path.join(sample_dir, 'A2B'))
 
-        save_midis(real_A_binary, './{}/A2B/{:02d}_{:04d}_origin.mid'.format(sample_dir, epoch, idx))
-        save_midis(fake_B_binary, './{}/A2B/{:02d}_{:04d}_transfer.mid'.format(sample_dir, epoch, idx))
-        save_midis(fake_A__binary, './{}/A2B/{:02d}_{:04d}_cycle.mid'.format(sample_dir, epoch, idx))
-        save_midis(real_B_binary, './{}/B2A/{:02d}_{:04d}_origin.mid'.format(sample_dir, epoch, idx))
-        save_midis(fake_A_binary, './{}/B2A/{:02d}_{:04d}_transfer.mid'.format(sample_dir, epoch, idx))
-        save_midis(fake_B__binary, './{}/B2A/{:02d}_{:04d}_cycle.mid'.format(sample_dir, epoch, idx))
+        save_midis(real_A_binary, '{}/A2B/{:02d}_{:04d}_origin.mid'.format(sample_dir, epoch, idx))
+        save_midis(fake_B_binary, '{}/A2B/{:02d}_{:04d}_transfer.mid'.format(sample_dir, epoch, idx))
+        save_midis(fake_A__binary, '{}/A2B/{:02d}_{:04d}_cycle.mid'.format(sample_dir, epoch, idx))
+        save_midis(real_B_binary, '{}/B2A/{:02d}_{:04d}_origin.mid'.format(sample_dir, epoch, idx))
+        save_midis(fake_A_binary, '{}/B2A/{:02d}_{:04d}_transfer.mid'.format(sample_dir, epoch, idx))
+        save_midis(fake_B__binary, '{}/B2A/{:02d}_{:04d}_cycle.mid'.format(sample_dir, epoch, idx))
 
     def test(self, args):
-        init_op = tf.global_variables_initializer()
+        init_op = tf.compat.v1.global_variables_initializer()
         self.sess.run(init_op)
         if args.which_direction == 'AtoB':
-            sample_files = file_io.get_matching_files('{}/*.*'.format(self.dataset_A_dir))
+            sample_files = glob(os.path.join(self.dataset_dir, '{}/test/*.*'.format(self.dataset_A_dir)))
         elif args.which_direction == 'BtoA':
-            sample_files = file_io.get_matching_files('{}/*.*'.format(self.dataset_B_dir))
+            sample_files = glob(os.path.join(self.dataset_dir, '{}/test/*.*'.format(self.dataset_B_dir)))
         else:
             raise Exception('--which_direction must be AtoB or BtoA')
         sample_files.sort(key=lambda x: int(os.path.splitext(os.path.basename(x))[0].split('_')[-1]))
@@ -416,21 +433,21 @@ class cyclegan(object):
 
         test_dir_mid = os.path.join(args.test_dir, '{}2{}_{}_{}_{}/{}/mid'.format(self.dataset_A_dir,
                                                                                   self.dataset_B_dir,
-                                                                                  self.now_datetime,
                                                                                   self.model,
                                                                                   self.sigma_d,
+                                                                                  self.now_datetime,
                                                                                   args.which_direction))
-        if not file_io.file_exists(test_dir_mid):
-            file_io.create_dir(test_dir_mid)
+        if not os.path.exists(test_dir_mid):
+            os.makedirs(test_dir_mid)
 
         test_dir_npy = os.path.join(args.test_dir, '{}2{}_{}_{}_{}/{}/npy'.format(self.dataset_A_dir,
                                                                                   self.dataset_B_dir,
-                                                                                  self.now_datetime,
                                                                                   self.model,
                                                                                   self.sigma_d,
+                                                                                  self.now_datetime,
                                                                                   args.which_direction))
-        if not file_io.file_exists(test_dir_npy):
-            file_io.create_dir(test_dir_npy)
+        if not os.path.exists(test_dir_npy):
+            os.makedirs(test_dir_npy)
 
         for idx in range(len(sample_files)):
             print('Processing midi: ', sample_files[idx])
@@ -448,31 +465,12 @@ class cyclegan(object):
             npy_path_origin = os.path.join(test_dir_npy, 'origin')
             npy_path_transfer = os.path.join(test_dir_npy, 'transfer')
             npy_path_cycle = os.path.join(test_dir_npy, 'cycle')
-            if not file_io.file_exists(npy_path_origin):
-                file_io.create_dir(npy_path_origin)
-            if not file_io.file_exists(npy_path_transfer):
-                file_io.create_dir(npy_path_transfer)
-            if not file_io.file_exists(npy_path_cycle):
-                file_io.create_dir(npy_path_cycle)
+            if not os.path.exists(npy_path_origin):
+                os.makedirs(npy_path_origin)
+            if not os.path.exists(npy_path_transfer):
+                os.makedirs(npy_path_transfer)
+            if not os.path.exists(npy_path_cycle):
+                os.makedirs(npy_path_cycle)
             np.save(os.path.join(npy_path_origin, '{}_origin.npy'.format(idx + 1)), origin_midi)
             np.save(os.path.join(npy_path_transfer, '{}_transfer.npy'.format(idx + 1)), fake_midi)
             np.save(os.path.join(npy_path_cycle, '{}_cycle.npy'.format(idx + 1)), fake_midi_cycle)
-
-    # def test_famous(self, args):
-    #     init_op = tf.global_variables_initializer()
-    #     self.sess.run(init_op)
-    #     song = np.load('./datasets/famous_songs/P2C/merged_npy/YMCA.npy')
-    #     print(song.shape)
-    #     if self.load(args.checkpoint_dir):
-    #         print(" [*] Load SUCCESS")
-    #     else:
-    #         print(" [!] Load failed...")
-    #
-    #     if args.which_direction == 'AtoB':
-    #         out_var, in_var = (self.testB_binary, self.test_A)
-    #     else:
-    #         out_var, in_var = (self.testA_binary, self.test_B)
-    #
-    #     transfer = self.sess.run(out_var, feed_dict={in_var: song * 1.})
-    #     save_midis(transfer, './datasets/famous_songs/P2C/transfer/YMCA.mid', 127)
-    #     np.save('./datasets/famous_songs/P2C/transfer/YMCA.npy', transfer)

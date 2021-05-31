@@ -11,10 +11,11 @@ import pprint
 import numpy as np
 import pretty_midi as pm
 import scipy.misc
+# from dataprocessing import select_instrument, piano_roll_to_pretty_midi
+import tensorflow as tf
 
 import write_midi
 
-# from dataprocessing import select_instrument, piano_roll_to_pretty_midi
 try:
     _imread = scipy.misc.imread
 except AttributeError:
@@ -28,6 +29,7 @@ get_stddev = lambda x, k_h, k_w: 1 / math.sqrt(k_w * k_h * x.get_shape()[-1])
 # -----------------------------
 # new added functions for cyclegan
 class ImagePool(object):
+
     def __init__(self, maxsize=50):
         self.maxsize = maxsize
         self.num_img = 0
@@ -206,3 +208,11 @@ def get_rand_samples(x, sample_size=64):
 def get_now_datetime():
     now = datetime.datetime.now().strftime('%Y-%m-%d')
     return str(now)
+
+
+def to_binary(bars, threshold=0.0):
+    """Turn velocity value into boolean"""
+    track_is_max = tf.equal(bars, tf.reduce_max(bars, axis=-1, keepdims=True))
+    track_pass_threshold = (bars > threshold)
+    out_track = tf.logical_and(track_is_max, track_pass_threshold)
+    return out_track
