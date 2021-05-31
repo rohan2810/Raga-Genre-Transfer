@@ -209,8 +209,11 @@ class CycleGAN(object):
 
         # define the path which stores the log file, format is "{A}2{B}_{date}_{model}_{sigma}".
         log_dir = os.path.join(self.log_dir,
-                               '{}2{}_{}_{}_{}'.format(self.dataset_A_dir, self.dataset_B_dir, self.now_datetime,
-                                                       self.model, self.sigma_d))
+                               '{}2{}_{}_{}_{}'.format(self.dataset_A_dir,
+                                                       self.dataset_B_dir,
+                                                       self.model,
+                                                       self.sigma_d,
+                                                       self.now_datetime))
         # log_dir = './logs/{}2{}_{}_{}_{}'.format(self.dataset_A_dir, self.dataset_B_dir, '2018-06-10',
         #                                          self.model, self.sigma_d)
         self.writer = tf.compat.v1.summary.FileWriter(log_dir, self.sess.graph)
@@ -319,9 +322,9 @@ class CycleGAN(object):
                 if np.mod(counter, args.print_freq) == 1:
                     sample_dir = os.path.join(self.sample_dir, '{}2{}_{}_{}_{}'.format(self.dataset_A_dir,
                                                                                        self.dataset_B_dir,
-                                                                                       self.now_datetime,
                                                                                        self.model,
-                                                                                       self.sigma_d))
+                                                                                       self.sigma_d,
+                                                                                       self.now_datetime))
                     # sample_dir = os.path.join(self.sample_dir, '{}2{}_{}_{}_{}'.format(self.dataset_A_dir,
                     #                                                                    self.dataset_B_dir,
                     #                                                                    '2018-06-10',
@@ -336,8 +339,11 @@ class CycleGAN(object):
 
     def save(self, checkpoint_dir, step):
         model_name = "cyclegan.model"
-        model_dir = "{}2{}_{}_{}_{}".format(self.dataset_A_dir, self.dataset_B_dir, self.now_datetime, self.model,
-                                            self.sigma_d)
+        model_dir = "{}2{}_{}_{}_{}".format(self.dataset_A_dir,
+                                            self.dataset_B_dir,
+                                            self.model,
+                                            self.sigma_d,
+                                            self.now_datetime)
         # model_dir = "{}2{}_{}_{}_{}".format(self.dataset_A_dir, self.dataset_B_dir, '2018-06-14', self.model,
         #                                     self.sigma_d)
         checkpoint_dir = os.path.join(checkpoint_dir, model_dir)
@@ -350,8 +356,11 @@ class CycleGAN(object):
     def load(self, checkpoint_dir):
         print(" [*] Reading checkpoint...")
 
-        model_dir = "{}2{}_{}_{}_{}".format(self.dataset_A_dir, self.dataset_B_dir, self.now_datetime, self.model,
-                                            self.sigma_d)
+        model_dir = "{}2{}_{}_{}_{}".format(self.dataset_A_dir,
+                                            self.dataset_B_dir,
+                                            self.model,
+                                            self.sigma_d,
+                                            self.now_datetime)
         # model_dir = "{}2{}_{}_{}_{}".format(self.dataset_A_dir, self.dataset_B_dir, '2018-06-14', self.model,
         #                                     self.sigma_d)
         checkpoint_dir = os.path.join(checkpoint_dir, model_dir)
@@ -423,18 +432,18 @@ class CycleGAN(object):
 
         test_dir_mid = os.path.join(args.test_dir, '{}2{}_{}_{}_{}/{}/mid'.format(self.dataset_A_dir,
                                                                                   self.dataset_B_dir,
-                                                                                  self.now_datetime,
                                                                                   self.model,
                                                                                   self.sigma_d,
+                                                                                  self.now_datetime,
                                                                                   args.which_direction))
         if not os.path.exists(test_dir_mid):
             os.makedirs(test_dir_mid)
 
         test_dir_npy = os.path.join(args.test_dir, '{}2{}_{}_{}_{}/{}/npy'.format(self.dataset_A_dir,
                                                                                   self.dataset_B_dir,
-                                                                                  self.now_datetime,
                                                                                   self.model,
                                                                                   self.sigma_d,
+                                                                                  self.now_datetime,
                                                                                   args.which_direction))
         if not os.path.exists(test_dir_npy):
             os.makedirs(test_dir_npy)

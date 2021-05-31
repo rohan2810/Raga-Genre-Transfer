@@ -211,6 +211,13 @@ class Classifier(object):
                                                                                   self.now_datetime,
                                                                                   args.which_direction)))
         sample_files_origin.sort(key=lambda x: int(os.path.splitext(os.path.basename(x))[0].split('_')[0]))
+        print('sample_files_origin')
+        print('{}2{}_{}_{}_{}/{}/npy/origin/*.*'.format(self.dataset_A_dir,
+                                                        self.dataset_B_dir,
+                                                        self.model,
+                                                        self.sigma_d,
+                                                        self.now_datetime,
+                                                        args.which_direction))
 
         # load the origin samples in npy format and sorted in ascending order
         sample_files_transfer = glob(
@@ -221,7 +228,13 @@ class Classifier(object):
                                                                                     self.now_datetime,
                                                                                     args.which_direction)))
         sample_files_transfer.sort(key=lambda x: int(os.path.splitext(os.path.basename(x))[0].split('_')[0]))
-
+        print('sample_files_transfer')
+        print('{}2{}_{}_{}_{}/{}/npy/transfer/*.*'.format(self.dataset_A_dir,
+                                                          self.dataset_B_dir,
+                                                          self.model,
+                                                          self.sigma_d,
+                                                          self.now_datetime,
+                                                          args.which_direction))
         # load the origin samples in npy format and sorted in ascending order
         sample_files_cycle = glob(
             os.path.join(self.test_dir, '{}2{}_{}_{}_{}/{}/npy/cycle/*.*'.format(self.dataset_A_dir,
@@ -230,11 +243,22 @@ class Classifier(object):
                                                                                  self.sigma_d,
                                                                                  self.now_datetime,
                                                                                  args.which_direction)))
-
+        print('sample_files_cycle')
+        print('{}2{}_{}_{}_{}/{}/npy/cycle/*.*'.format(self.dataset_A_dir,
+                                                       self.dataset_B_dir,
+                                                       self.model,
+                                                       self.sigma_d,
+                                                       self.now_datetime,
+                                                       args.which_direction))
+        print('sample_files_cycle length before sort {}'.format(len(sample_files_cycle)))
         sample_files_cycle.sort(key=lambda x: int(os.path.splitext(os.path.basename(x))[0].split('_')[0]))
 
         # put the origin, transfer and cycle of the same phrase in one zip
+        print('sample_files_origin length {}'.format(len(sample_files_origin)))
+        print('sample_files_cycle length {}'.format(len(sample_files_cycle)))
+        print('sample_files_transfer length {}'.format(len(sample_files_transfer)))
         sample_files = list(zip(sample_files_origin, sample_files_transfer, sample_files_cycle))
+        print('sample_files length {}'.format(len(sample_files)))
 
         if self.load(args.checkpoint_dir):
             print(" [*] Load SUCCESS")
