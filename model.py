@@ -1,16 +1,17 @@
 from __future__ import division
 
-from collections import namedtuple
-from glob import glob
-
 import os
 import time
+from collections import namedtuple
+from glob import glob
 
 from module import *
 from module import abs_criterion, mae_criterion
 from ops import *
 from utils import *
 from utils import get_now_datetime, ImagePool, to_binary, load_npy_data, save_midis
+
+os.environ["CUDA_VISIBLE_DEVICES"] = os.environ['SGE_GPU']
 
 
 class CycleGAN(object):
@@ -219,7 +220,7 @@ class CycleGAN(object):
         dataB = glob(os.path.join(self.dataset_dir, '{}/train/*.*'.format(self.dataset_B_dir)))
         if self.model == 'partial':
             data_mixed = dataA + dataB
-        if self.model == 'full':  # TODO Needs to be fixed
+        if self.model == 'full':
             data_mixed = glob('./datasets/JCP_mixed/*.*')
 
         counter = 1
@@ -463,22 +464,3 @@ class CycleGAN(object):
             np.save(os.path.join(npy_path_origin, '{}_origin.npy'.format(idx + 1)), origin_midi)
             np.save(os.path.join(npy_path_transfer, '{}_transfer.npy'.format(idx + 1)), fake_midi)
             np.save(os.path.join(npy_path_cycle, '{}_cycle.npy'.format(idx + 1)), fake_midi_cycle)
-
-    # def test_famous(self, args):
-    #     init_op = tf.compat.v1.global_variables_initializer()
-    #     self.sess.run(init_op)
-    #     song = np.load('./datasets/famous_songs/P2C/merged_npy/YMCA.npy')
-    #     print(song.shape)
-    #     if self.load(args.checkpoint_dir):
-    #         print(" [*] Load SUCCESS")
-    #     else:
-    #         print(" [!] Load failed...")
-    #
-    #     if args.which_direction == 'AtoB':
-    #         out_var, in_var = (self.testB_binary, self.test_A)
-    #     else:
-    #         out_var, in_var = (self.testA_binary, self.test_B)
-    #
-    #     transfer = self.sess.run(out_var, feed_dict={in_var: song * 1.})
-    #     save_midis(transfer, './datasets/famous_songs/P2C/transfer/YMCA.mid', 127)
-    #     np.save('./datasets/famous_songs/P2C/transfer/YMCA.npy', transfer)

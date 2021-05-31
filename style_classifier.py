@@ -6,6 +6,8 @@ from random import shuffle
 from module import *
 from utils import *
 
+os.environ["CUDA_VISIBLE_DEVICES"] = os.environ['SGE_GPU']
+
 
 class Classifier(object):
     def __init__(self, sess, args):
@@ -208,13 +210,6 @@ class Classifier(object):
                                                                                   self.sigma_d,
                                                                                   self.now_datetime,
                                                                                   args.which_direction)))
-        print('sample_files_origin')
-        print('{}2{}_{}_{}_{}/{}/npy/origin/*.*'.format(self.dataset_A_dir,
-                                                        self.dataset_B_dir,
-                                                        self.model,
-                                                        self.sigma_d,
-                                                        self.now_datetime,
-                                                        args.which_direction))
         sample_files_origin.sort(key=lambda x: int(os.path.splitext(os.path.basename(x))[0].split('_')[0]))
 
         # load the origin samples in npy format and sorted in ascending order
@@ -225,39 +220,21 @@ class Classifier(object):
                                                                                     self.sigma_d,
                                                                                     self.now_datetime,
                                                                                     args.which_direction)))
-        print('sample_files_transfer')
-        print('{}2{}_{}_{}_{}/{}/npy/transfer/*.*'.format(self.dataset_A_dir,
-                                                          self.dataset_B_dir,
-                                                          self.model,
-                                                          self.sigma_d,
-                                                          self.now_datetime,
-                                                          args.which_direction))
         sample_files_transfer.sort(key=lambda x: int(os.path.splitext(os.path.basename(x))[0].split('_')[0]))
 
         # load the origin samples in npy format and sorted in ascending order
         sample_files_cycle = glob(
             os.path.join(self.test_dir, '{}2{}_{}_{}_{}/{}/npy/cycle/*.*'.format(self.dataset_A_dir,
-                                                                                      self.dataset_B_dir,
-                                                                                      self.model,
-                                                                                      self.sigma_d,
-                                                                                      self.now_datetime,
-                                                                                      args.which_direction)))
-        print('sample_files_cycle')
-        print('{}2{}_{}_{}_{}/{}/npy/cycle/*.*'.format(self.dataset_A_dir,
-                                                       self.dataset_B_dir,
-                                                       self.model,
-                                                       self.sigma_d,
-                                                       self.now_datetime,
-                                                       args.which_direction))
-        print('sample_files_cycle length before sort {}'.format(len(sample_files_cycle)))
+                                                                                 self.dataset_B_dir,
+                                                                                 self.model,
+                                                                                 self.sigma_d,
+                                                                                 self.now_datetime,
+                                                                                 args.which_direction)))
+
         sample_files_cycle.sort(key=lambda x: int(os.path.splitext(os.path.basename(x))[0].split('_')[0]))
 
         # put the origin, transfer and cycle of the same phrase in one zip
-        print('sample_files_origin length {}'.format(len(sample_files_origin)))
-        print('sample_files_cycle length {}'.format(len(sample_files_cycle)))
-        print('sample_files_transfer length {}'.format(len(sample_files_transfer)))
-        sample_files = list(zip(sample_files_origin, sample_files_transfer, sample_files_origin))
-        print('sample_files length {}'.format(len(sample_files)))
+        sample_files = list(zip(sample_files_origin, sample_files_transfer, sample_files_cycle))
 
         if self.load(args.checkpoint_dir):
             print(" [*] Load SUCCESS")
@@ -348,36 +325,3 @@ class Classifier(object):
         accuracy_transfer = count_transfer * 1.0 / len(sample_files)
         accuracy_cycle = count_cycle * 1.0 / len(sample_files)
         print('Accuracy of this classifier on test datasets is :', accuracy_origin, accuracy_transfer, accuracy_cycle)
-
-    # def test_famous(self, args):
-    #     init_op = tf.compat.v1.global_variables_initializer()
-    #     self.sess.run(init_op)
-    #
-    #     song_o = np.load('./datasets/famous_songs/C2J/merged_npy/Scenes from Childhood (Schumann).npy')
-    #     song_t = np.load('./datasets/famous_songs/C2J/transfer/Scenes from Childhood (Schumann).npy')
-    #     print(song_o.shape, song_t.shape)
-    #
-    #     if self.load(args.checkpoint_dir):
-    #         print(" [*] Load SUCCESS")
-    #     else:
-    #         print(" [!] Load failed...")
-    #
-    #     sum_o_A = 0
-    #     sum_o_B = 0
-    #     sum_t_A = 0
-    #     sum_t_B = 0
-    #     for idx in range(song_t.shape[0]):
-    #         phrase_o = song_o[idx]
-    #         phrase_o = phrase_o.reshape(1, phrase_o.shape[0], phrase_o.shape[1], 1)
-    #         origin = self.sess.run(self.test_result_softmax, feed_dict={self.test_midi: phrase_o * 2. - 1.})
-    #         phrase_t = song_t[idx]
-    #         phrase_t = phrase_t.reshape(1, phrase_t.shape[0], phrase_t.shape[1], 1)
-    #         transfer = self.sess.run(self.test_result_softmax, feed_dict={self.test_midi: phrase_t * 2. - 1.})
-    #
-    #         sum_o_A += origin[0][0]
-    #         sum_o_B += origin[0][1]
-    #         sum_t_A += transfer[0][0]
-    #         sum_t_B += transfer[0][1]
-    #
-    #     print("origin, source:", sum_o_A / song_t.shape[0], "target:", sum_o_B / song_t.shape[0])
-    #     print("transfer, source:", sum_t_A / song_t.shape[0], "target:", sum_t_B / song_t.shape[0])
