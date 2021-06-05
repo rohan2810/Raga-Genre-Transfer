@@ -63,9 +63,6 @@ class CycleGAN(object):
         self.real_data = tf.compat.v1.placeholder(tf.float32, [self.batch_size, self.time_step, self.pitch_range,
                                                                self.input_c_dim + self.output_c_dim],
                                                   name='real_A_and_B')
-        if self.model != 'base':
-            self.real_mixed = tf.compat.v1.placeholder(tf.float32, [self.batch_size, self.time_step, self.pitch_range,
-                                                                    self.input_c_dim], name='real_A_and_B_mixed')
 
         self.real_A = self.real_data[:, :, :, :self.input_c_dim]
         self.real_B = self.real_data[:, :, :, self.input_c_dim:self.input_c_dim + self.output_c_dim]
@@ -105,16 +102,7 @@ class CycleGAN(object):
                                                  self.options, reuse=True, name="discriminatorA")
         self.DB_fake_sample = self.discriminator(self.fake_B_sample + self.gaussian_noise,
                                                  self.options, reuse=True, name="discriminatorB")
-        if self.model != 'base':
-            # Discriminator: All
-            self.DA_real_all = self.discriminator(self.real_mixed + self.gaussian_noise, self.options, reuse=False,
-                                                  name="discriminatorA_all")
-            self.DA_fake_sample_all = self.discriminator(self.fake_A_sample + self.gaussian_noise,
-                                                         self.options, reuse=True, name="discriminatorA_all")
-            self.DB_real_all = self.discriminator(self.real_mixed + self.gaussian_noise, self.options, reuse=False,
-                                                  name="discriminatorB_all")
-            self.DB_fake_sample_all = self.discriminator(self.fake_B_sample + self.gaussian_noise,
-                                                         self.options, reuse=True, name="discriminatorB_all")
+
         # Generator loss
         self.cycle_loss = self.L1_lambda * abs_criterion(self.real_A, self.fake_A_) \
                           + self.L1_lambda * abs_criterion(self.real_B, self.fake_B_)
@@ -130,16 +118,6 @@ class CycleGAN(object):
         self.da_loss = (self.da_loss_real + self.da_loss_fake) / 2
         self.d_loss = self.da_loss + self.db_loss
 
-        if self.model != 'base':
-            self.db_all_loss_real = self.criterionGAN(self.DB_real_all, tf.ones_like(self.DB_real_all))
-            self.db_all_loss_fake = self.criterionGAN(self.DB_fake_sample_all, tf.zeros_like(self.DB_fake_sample_all))
-            self.db_all_loss = (self.db_all_loss_real + self.db_all_loss_fake) / 2
-            self.da_all_loss_real = self.criterionGAN(self.DA_real_all, tf.ones_like(self.DA_real_all))
-            self.da_all_loss_fake = self.criterionGAN(self.DA_fake_sample_all, tf.zeros_like(self.DA_fake_sample_all))
-            self.da_all_loss = (self.da_all_loss_real + self.da_all_loss_fake) / 2
-            self.d_all_loss = self.da_all_loss + self.db_all_loss
-            self.D_loss = self.d_loss + self.gamma * self.d_all_loss
-
         # Define all summaries
         self.g_loss_a2b_sum = tf.compat.v1.summary.scalar("g_loss_a2b", self.g_loss_a2b)
         self.g_loss_b2a_sum = tf.compat.v1.summary.scalar("g_loss_b2a", self.g_loss_b2a)
@@ -154,16 +132,9 @@ class CycleGAN(object):
         self.db_loss_fake_sum = tf.compat.v1.summary.scalar("db_loss_fake", self.db_loss_fake)
         self.da_loss_real_sum = tf.compat.v1.summary.scalar("da_loss_real", self.da_loss_real)
         self.da_loss_fake_sum = tf.compat.v1.summary.scalar("da_loss_fake", self.da_loss_fake)
-        if self.model != 'base':
-            self.d_all_loss_sum = tf.compat.v1.summary.scalar("d_all_loss", self.d_all_loss)
-            self.D_loss_sum = tf.compat.v1.summary.scalar("D_loss", self.d_loss)
-            self.d_sum = tf.compat.v1.summary.merge([self.da_loss_sum, self.da_loss_real_sum, self.da_loss_fake_sum,
-                                                     self.db_loss_sum, self.db_loss_real_sum, self.db_loss_fake_sum,
-                                                     self.d_loss_sum, self.d_all_loss_sum, self.D_loss_sum])
-        else:
-            self.d_sum = tf.compat.v1.summary.merge([self.da_loss_sum, self.da_loss_real_sum, self.da_loss_fake_sum,
-                                                     self.db_loss_sum, self.db_loss_real_sum, self.db_loss_fake_sum,
-                                                     self.d_loss_sum])
+        self.d_sum = tf.compat.v1.summary.merge([self.da_loss_sum, self.da_loss_real_sum, self.da_loss_fake_sum,
+                                                 self.db_loss_sum, self.db_loss_real_sum, self.db_loss_fake_sum,
+                                                 self.d_loss_sum])
 
         # Test
         self.test_A = tf.compat.v1.placeholder(tf.float32, [None, self.time_step, self.pitch_range,
@@ -196,36 +167,27 @@ class CycleGAN(object):
         self.lr = tf.compat.v1.placeholder(tf.float32, None, name='learning_rate')
 
         # Discriminator and Generator Optimizer
-        if self.model == 'base':
-            self.d_optim = tf.compat.v1.train.AdamOptimizer(self.lr, beta1=args.beta1).minimize(self.d_loss,
-                                                                                                var_list=self.d_vars)
-        else:
-            self.d_optim = tf.compat.v1.train.AdamOptimizer(self.lr, beta1=args.beta1).minimize(self.D_loss,
-                                                                                                var_list=self.d_vars)
+        self.d_optim = tf.compat.v1.train.AdamOptimizer(self.lr, beta1=args.beta1).minimize(self.d_loss,
+                                                                                            var_list=self.d_vars)
+
         self.g_optim = tf.compat.v1.train.AdamOptimizer(self.lr, beta1=args.beta1).minimize(self.g_loss,
                                                                                             var_list=self.g_vars)
 
         init_op = tf.compat.v1.global_variables_initializer()
         self.sess.run(init_op)
 
-        # define the path which stores the log file, format is "{A}2{B}_{date}_{model}_{sigma}".
+        # define the path which stores the log file, format is "{A}2{B}_{model}_{sigma}_{datetime}".
         log_dir = os.path.join(self.log_dir,
                                '{}2{}_{}_{}_{}'.format(self.dataset_A_dir,
                                                        self.dataset_B_dir,
                                                        self.model,
                                                        self.sigma_d,
                                                        self.now_datetime))
-        # log_dir = './logs/{}2{}_{}_{}_{}'.format(self.dataset_A_dir, self.dataset_B_dir, '2018-06-10',
-        #                                          self.model, self.sigma_d)
         self.writer = tf.compat.v1.summary.FileWriter(log_dir, self.sess.graph)
 
         # Data from domain A and B, and mixed dataset for partial and full models.
         dataA = glob(os.path.join(self.dataset_dir, '{}/train/*.*'.format(self.dataset_A_dir)))
         dataB = glob(os.path.join(self.dataset_dir, '{}/train/*.*'.format(self.dataset_B_dir)))
-        if self.model == 'partial':
-            data_mixed = dataA + dataB
-        if self.model == 'full':
-            data_mixed = glob('./datasets/JCP_mixed/*.*')
 
         counter = 1
         start_time = time.time()
@@ -241,7 +203,6 @@ class CycleGAN(object):
             # Shuffle training data
             np.random.shuffle(dataA)
             np.random.shuffle(dataB)
-            if self.model != 'base': np.random.shuffle(data_mixed)
 
             # Get the proper number of batches
             batch_idxs = min(min(len(dataA), len(dataB)), args.train_size) // self.batch_size
@@ -261,62 +222,25 @@ class CycleGAN(object):
                 gaussian_noise = np.abs(np.random.normal(0, self.sigma_d, [self.batch_size, self.time_step,
                                                                            self.pitch_range, self.input_c_dim]))
 
-                if self.model == 'base':
+                # Update G network and record fake outputs
+                fake_A, fake_B, _, summary_str, g_loss_a2b, g_loss_b2a, cycle_loss, g_loss = self.sess.run(
+                    [self.fake_A,
+                     self.fake_B, self.g_optim, self.g_sum, self.g_loss_a2b, self.g_loss_b2a, self.cycle_loss,
+                     self.g_loss], feed_dict={self.real_data: batch_images, self.gaussian_noise: gaussian_noise,
+                                              self.lr: lr})
 
-                    # Update G network and record fake outputs
-                    fake_A, fake_B, _, summary_str, g_loss_a2b, g_loss_b2a, cycle_loss, g_loss = self.sess.run(
-                        [self.fake_A,
-                         self.fake_B, self.g_optim, self.g_sum, self.g_loss_a2b, self.g_loss_b2a, self.cycle_loss,
-                         self.g_loss], feed_dict={self.real_data: batch_images, self.gaussian_noise: gaussian_noise,
-                                                  self.lr: lr})
+                # Update D network
+                _, summary_str, da_loss, db_loss, d_loss = self.sess.run([
+                    self.d_optim, self.d_sum, self.da_loss, self.db_loss, self.d_loss],
+                    feed_dict={self.real_data: batch_images, self.fake_A_sample: fake_A, self.fake_B_sample: fake_B,
+                               self.lr: lr, self.gaussian_noise: gaussian_noise})
 
-                    # Update D network
-                    _, summary_str, da_loss, db_loss, d_loss = self.sess.run([
-                        self.d_optim, self.d_sum, self.da_loss, self.db_loss, self.d_loss],
-                        feed_dict={self.real_data: batch_images, self.fake_A_sample: fake_A, self.fake_B_sample: fake_B,
-                                   self.lr: lr, self.gaussian_noise: gaussian_noise})
-
-                    print('=================================================================')
-                    print(("Epoch: [%2d] [%4d/%4d] time: %4.4f, d_loss: %6.2f, G_loss: %6.2f" %
-                           (epoch, idx, batch_idxs, time.time() - start_time, d_loss, g_loss)))
-                    print((
-                            "++++++++++G_loss_A2B: %6.2f G_loss_B2A: %6.2f Cycle_loss: %6.2f DA_loss: %6.2f DB_loss: %6.2f" %
-                            (g_loss_a2b, g_loss_b2a, cycle_loss, da_loss, db_loss)))
-
-                else:
-
-                    # To feed real_mixed
-                    batch_files_mixed = data_mixed[idx * self.batch_size:(idx + 1) * self.batch_size]
-                    batch_images_mixed = [np.load(batch_file) * 1. for batch_file in batch_files_mixed]
-                    batch_images_mixed = np.array(batch_images_mixed).astype(np.float32)
-
-                    # Update G network and record fake outputs
-                    fake_A, fake_B, _, summary_str, g_loss_a2b, g_loss_b2a, cycle_loss, g_loss = self.sess.run([
-                        self.fake_A, self.fake_B, self.g_optim, self.g_sum, self.g_loss_a2b, self.g_loss_b2a,
-                        self.cycle_loss, self.g_loss], feed_dict={self.real_data: batch_images,
-                                                                  self.gaussian_noise: gaussian_noise, self.lr: lr,
-                                                                  self.real_mixed: batch_images_mixed})
-                    self.writer.add_summary(summary_str, counter)
-                    [fake_A, fake_B] = self.pool([fake_A, fake_B])
-
-                    # Update D network
-                    _, summary_str, da_loss, db_loss, d_loss, da_all_loss, db_all_loss, d_all_loss, D_loss = self.sess.run(
-                        [
-                            self.d_optim, self.d_sum, self.da_loss, self.db_loss, self.d_loss, self.da_all_loss,
-                            self.db_all_loss, self.d_all_loss, self.D_loss],
-                        feed_dict={self.real_data: batch_images, self.fake_A_sample: fake_A, self.fake_B_sample: fake_B,
-                                   self.lr: lr, self.gaussian_noise: gaussian_noise,
-                                   self.real_mixed: batch_images_mixed})
-                    self.writer.add_summary(summary_str, counter)
-
-                    print('=================================================================')
-                    print(("Epoch: [%2d] [%4d/%4d] time: %4.4f D_loss: %6.2f, d_loss: %6.2f, d_all_loss: %6.2f, "
-                           "G_loss: %6.2f" %
-                           (epoch, idx, batch_idxs, time.time() - start_time, D_loss, d_loss, d_all_loss, g_loss)))
-                    print((
-                            "++++++++++G_loss_A2B: %6.2f G_loss_B2A: %6.2f Cycle_loss: %6.2f DA_loss: %6.2f DB_loss: %6.2f, "
-                            "DA_all_loss: %6.2f DB_all_loss: %6.2f" %
-                            (g_loss_a2b, g_loss_b2a, cycle_loss, da_loss, db_loss, da_all_loss, db_all_loss)))
+                print('=================================================================')
+                print(("Epoch: [%2d] [%4d/%4d] time: %4.4f, d_loss: %6.2f, G_loss: %6.2f" %
+                       (epoch, idx, batch_idxs, time.time() - start_time, d_loss, g_loss)))
+                print((
+                        "++++++++++G_loss_A2B: %6.2f G_loss_B2A: %6.2f Cycle_loss: %6.2f DA_loss: %6.2f DB_loss: %6.2f" %
+                        (g_loss_a2b, g_loss_b2a, cycle_loss, da_loss, db_loss)))
 
                 counter += 1
 
@@ -326,11 +250,6 @@ class CycleGAN(object):
                                                                                        self.model,
                                                                                        self.sigma_d,
                                                                                        self.now_datetime))
-                    # sample_dir = os.path.join(self.sample_dir, '{}2{}_{}_{}_{}'.format(self.dataset_A_dir,
-                    #                                                                    self.dataset_B_dir,
-                    #                                                                    '2018-06-10',
-                    #                                                                    self.model,
-                    #                                                                    self.sigma_d))
                     if not os.path.exists(sample_dir):
                         os.makedirs(sample_dir)
                     self.sample_model(sample_dir, epoch, idx)
@@ -345,8 +264,6 @@ class CycleGAN(object):
                                             self.model,
                                             self.sigma_d,
                                             self.now_datetime)
-        # model_dir = "{}2{}_{}_{}_{}".format(self.dataset_A_dir, self.dataset_B_dir, '2018-06-14', self.model,
-        #                                     self.sigma_d)
         checkpoint_dir = os.path.join(checkpoint_dir, model_dir)
 
         if not os.path.exists(checkpoint_dir):
@@ -362,15 +279,12 @@ class CycleGAN(object):
                                             self.model,
                                             self.sigma_d,
                                             self.now_datetime)
-        # model_dir = "{}2{}_{}_{}_{}".format(self.dataset_A_dir, self.dataset_B_dir, '2018-06-14', self.model,
-        #                                     self.sigma_d)
         checkpoint_dir = os.path.join(checkpoint_dir, model_dir)
 
         ckpt = tf.train.get_checkpoint_state(checkpoint_dir)
         if ckpt and ckpt.model_checkpoint_path:
             ckpt_name = os.path.basename(ckpt.model_checkpoint_path)
             self.saver.restore(self.sess, os.path.join(checkpoint_dir, ckpt_name))
-            # self.saver.restore(self.sess, os.path.join(checkpoint_dir, 'cyclegan.model-7011'))
             return True
         else:
             return False

@@ -174,8 +174,6 @@ class Classifier(object):
         model_name = "classifier.model"
         model_dir = "classifier_{}2{}_{}_{}".format(self.dataset_A_dir, self.dataset_B_dir, self.now_datetime,
                                                     str(self.sigma_c))
-        # model_dir = "classifier_{}2{}_{}_{}".format(self.dataset_A_dir, self.dataset_B_dir, '2018-06-08',
-        #                                             str(self.sigma_c))
         checkpoint_dir = os.path.join(checkpoint_dir, model_dir)
 
         if not os.path.exists(checkpoint_dir):
